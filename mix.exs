@@ -2,7 +2,7 @@ defmodule Duplex.Mixfile do
   use Mix.Project
 
   def project do
-    [app: :duplicate_code_finder,
+    [app: :duplex,
      version: "0.1.1",
      elixir: "~> 1.3",
      build_embedded: Mix.env == :prod,
@@ -30,7 +30,7 @@ defmodule Duplex.Mixfile do
 
   defp description do
     """
-    Duplicate Code Finder allows you to search for similar code blocks inside your project.
+    Duplex allows you to search for similar code blocks inside your project.
 
     ## Usage
     ```elixir
@@ -42,10 +42,10 @@ defmodule Duplex.Mixfile do
 
   defp package do
     [
-     name: :duplicate_code_finder,
+     name: :duplex,
      # files: ["lib", "priv", "mix.exs", "README*", "readme*", "LICENSE*", "license*"],
-     maintainers: ["Cherevko Ivan", "Koryagin Andrew"],
-     licenses: ["Lutrovnik"],
+     maintainers: ["Ivan Cherevko", "Andrew Koryagin"],
+     licenses: ["Apache 2.0"],
      links: %{},
     ]
   end

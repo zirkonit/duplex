@@ -10,11 +10,11 @@ use Mix.Config
 
 # You can configure for your application as:
 #
-#     config :duplicate_code_finder, key: :value
+#     config :duplex, key: :value
 #
 # And access this configuration in your application as:
 #
-#     Application.get_env(:duplicate_code_finder, :key)
+#     Application.get_env(:duplex, :key)
 #
 # Or configure a 3rd-party app:
 #
@@ -29,4 +29,4 @@ use Mix.Config
 #
 #     import_config "#{Mix.env}.exs"
 
-# config :duplicate_code_finder, n_jobs: 1
+# config :duplex, n_jobs: 1

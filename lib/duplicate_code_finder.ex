@@ -1,7 +1,7 @@
 defmodule Duplex do
 
   @moduledoc """
-    Duplicate Code Finder allows you to search for similar code blocks inside your Elixir project.
+    Duplex allows you to search for similar code blocks inside your Elixir project.
   """
 
   defp flatten(e) do
@@ -112,10 +112,10 @@ defmodule Duplex do
 
   defp get_configs() do
     {d_dirs, d_min_depth, d_min_length, d_n_jobs} = {["lib", "config", "web"], 1, 4, 4}
-    dirs = Application.get_env(:duplicate_code_finder, :dirs)
-    min_depth = Application.get_env(:duplicate_code_finder, :min_depth)
-    min_length = Application.get_env(:duplicate_code_finder, :min_length)
-    n_jobs = Application.get_env(:duplicate_code_finder, :n_jobs)
+    dirs = Application.get_env(:duplex, :dirs)
+    min_depth = Application.get_env(:duplex, :min_depth)
+    min_length = Application.get_env(:duplex, :min_length)
+    n_jobs = Application.get_env(:duplex, :n_jobs)
     dirs = choose_one(dirs, d_dirs)
     min_depth = choose_one(min_depth, d_min_depth)
     min_length = choose_one(min_length, d_min_length)

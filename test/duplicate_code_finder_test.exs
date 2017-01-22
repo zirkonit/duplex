@@ -4,7 +4,7 @@ defmodule DuplexTest do
   import Duplex
 
   test "getting all .ex, .exs files" do
-    assert Duplex.get_files("lib") == ["lib/mix/scan_task.ex", "lib/duplicate_code_finder.ex"]
+    assert Duplex.get_files("lib") == ["lib/mix/scan_task.ex", "lib/duplex.ex"]
     assert Duplex.get_files("path_does_not_exist") == []
   end
 
