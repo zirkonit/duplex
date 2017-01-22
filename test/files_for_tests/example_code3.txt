@@ -1,0 +1,5 @@
+defmodule M3 do
+  def f(n, m) do
+    n + m
+  end
+end
