@@ -10,11 +10,16 @@ defmodule Duplex.Mixfile do
      description: description(),
      package: package(),
      test_coverage: [tool: Coverex.Task],
-     deps: deps()]
+     deps: deps(),
+     escript: escript()]
   end
 
   def application do
     [applications: [:logger]]
+  end
+
+  def escript do
+    [main_module: Duplex]
   end
 
   defp deps do

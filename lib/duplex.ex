@@ -5,6 +5,33 @@ defmodule Duplex do
     project.
   """
 
+  defp parse_args(args) do
+    {args, _, _} = OptionParser.parse(args)
+    args = args |> Enum.into(%{})
+    extract = fn args, key, to_int ->
+      if key in Map.keys(args) do
+        if to_int do
+          {parsed, _} = Integer.parse(args[key])
+          parsed
+        else
+          args[key]
+        end
+      else
+        nil
+      end
+    end
+    min_depth = extract.(args, :mindepth, true)
+    min_length = extract.(args, :minlength, true)
+    n_jobs = extract.(args, :njobs, true)
+    export_file = extract.(args, :export, false)
+    {min_depth, min_length, n_jobs, export_file}
+  end
+
+  def main(args \\ []) do
+    {min_depth, min_length, n_jobs, export_file} = parse_args(args)
+    Duplex.show_similar(nil, min_depth, min_length, n_jobs, export_file)
+  end
+
   defp flatten(e) do
     Enum.flat_map(e, &(&1))
   end
@@ -92,21 +119,22 @@ defmodule Duplex do
     end
   end
 
-  defp choose_one(i, j) do
-    if i, do: i, else: j
-  end
-
-  defp get_configs do
+  defp get_configs(dirs, min_depth, min_length, n_jobs) do
     d_dirs = ["lib", "config", "web"]
     {d_min_depth, d_min_length, d_n_jobs} = {3, 4, 4}
-    dirs = Application.get_env(:duplex, :dirs)
-    min_depth = Application.get_env(:duplex, :min_depth)
-    min_length = Application.get_env(:duplex, :min_length)
-    n_jobs = Application.get_env(:duplex, :n_jobs)
-    dirs = choose_one(dirs, d_dirs)
-    min_depth = choose_one(min_depth, d_min_depth)
-    min_length = choose_one(min_length, d_min_length)
-    n_jobs = choose_one(n_jobs, d_n_jobs)
+
+    c_dirs = Application.get_env(:duplex, :dirs)
+    c_min_depth = Application.get_env(:duplex, :min_depth)
+    c_min_length = Application.get_env(:duplex, :min_length)
+    c_n_jobs = Application.get_env(:duplex, :n_jobs)
+    choose_one = fn i, j, k ->
+      if i, do: i, else: if j, do: j, else: k
+    end
+    dirs = choose_one.(dirs, c_dirs, d_dirs)
+    min_depth = choose_one.(min_depth, c_min_depth, d_min_depth)
+    min_length = choose_one.(min_length, c_min_length, d_min_length)
+    n_jobs = choose_one.(n_jobs, c_n_jobs, d_n_jobs)
+
     {dirs, min_depth, min_length, n_jobs}
   end
 
@@ -174,10 +202,9 @@ defmodule Duplex do
   # Main function to find equal code parts.
   # dirs - directories to scan for elixir source files
   # export_file - if not nil, write results to the file by this path
-  def show_similar(dirs \\ ["lib"], n_jobs \\ nil, export_file \\ nil) do
-    {directories, min_depth, min_length, n} = get_configs()
-    dirs = choose_one(dirs, directories)
-    n_jobs = choose_one(n_jobs, n)
+  def show_similar(dirs \\ nil, min_depth \\ nil, min_length \\ nil, n_jobs \\ nil, export_file \\ nil) do
+     configs = get_configs(dirs, min_depth, min_length, n_jobs)
+     {dirs, min_depth, min_length, n_jobs} = configs
     # scan dirs
     files = for d <- dirs do
       get_files(d)
@@ -343,12 +370,24 @@ defmodule Duplex do
         else
           "_"
         end
-        %{name: name, lines: get_lines(tnode), children: ch, variable: var, depth: depth}
+        %{name: name,
+         lines: get_lines(tnode),
+      children: ch,
+      variable: var,
+         depth: depth}
       _ ->
         if is_integer(tnode) or is_float(tnode) do
-            %{name: tnode, lines: get_lines(tnode), children: ch, variable: false, depth: depth}
+            %{name: tnode,
+             lines: get_lines(tnode),
+          children: ch,
+          variable: false,
+             depth: depth}
         else
-            %{name: "_", lines: get_lines(tnode), children: ch, variable: false, depth: depth}
+            %{name: "_",
+             lines: get_lines(tnode),
+          children: ch,
+          variable: false,
+             depth: depth}
         end
     end
   end
