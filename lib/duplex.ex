@@ -202,7 +202,8 @@ defmodule Duplex do
   # dirs - directories to scan for elixir source files
   # export_file - if not nil, write results to the file by this path
   def show_similar(dirs \\ nil, min_depth \\ nil, min_length \\ nil, n_jobs \\ nil, export_file \\ nil) do
-    {dirs, min_depth, min_length, n_jobs} = get_configs(dirs, min_depth, min_length, n_jobs)
+     configs = get_configs(dirs, min_depth, min_length, n_jobs)
+     {dirs, min_depth, min_length, n_jobs} = configs
     # scan dirs
     files = for d <- dirs do
       get_files(d)
@@ -433,8 +434,8 @@ defmodule Duplex do
     current_eq = (s1[:variable] and s2[:variable]) or (s1[:name] == s2[:name])
     # assume different variable names as different
     # current_eq = s1[:name] == s2[:name]
-    eq = if current_eq do
-      if s1[:depth] == s2[:depth] and length(s1[:children]) == length(s2[:children]) do
+    eq = if current_eq and s1[:depth] == s2[:depth] do
+      if length(s1[:children]) == length(s2[:children]) do
         ch_eq = for {c1, c2} <- Enum.zip(s1[:children], s2[:children]) do
           is_equal(c1, c2)
         end
@@ -472,12 +473,24 @@ defmodule Duplex do
         else
           "_"
         end
-        %{name: name, lines: get_lines(tnode), children: ch, variable: var, depth: depth}
+        %{name: name,
+         lines: get_lines(tnode),
+      children: ch,
+      variable: var,
+         depth: depth}
       _ ->
         if is_integer(tnode) or is_float(tnode) do
-            %{name: tnode, lines: get_lines(tnode), children: ch, variable: false, depth: depth}
+            %{name: tnode,
+             lines: get_lines(tnode),
+          children: ch,
+          variable: false,
+             depth: depth}
         else
-            %{name: "_", lines: get_lines(tnode), children: ch, variable: false, depth: depth}
+            %{name: "_",
+             lines: get_lines(tnode),
+          children: ch,
+          variable: false,
+             depth: depth}
         end
     end
   end
