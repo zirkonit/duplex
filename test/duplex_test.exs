@@ -22,8 +22,8 @@ defmodule DuplexTest do
     assert Duplex.is_equal(shape1, shape2)
     assert shape1 != shape3
     assert shape2 != shape3
-    assert not Duplex.is_equal(shape1, shape3)
-    assert not Duplex.is_equal(shape2, shape3)
+    refute Duplex.is_equal(shape1, shape3)
+    refute Duplex.is_equal(shape2, shape3)
   end
 
   test "_this app code_ has duplicates" do

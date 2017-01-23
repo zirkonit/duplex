@@ -1,7 +1,8 @@
 defmodule Duplex do
 
   @moduledoc """
-    Duplex allows you to search for similar code blocks inside your Elixir project.
+    Duplex allows you to search for similar code blocks inside your Elixir
+    project.
   """
 
   defp flatten(e) do
@@ -67,8 +68,10 @@ defmodule Duplex do
     # calculate shapes only once
     nodes = for n <- nodes, do: {{n, file}, get_shape(n)}
     # filter short blocks, non deep blocks
-    nodes = nodes |> Enum.filter(fn x -> deep?(x, min_depth) end) |> Enum.filter(fn x -> long?(x, min_length) end)
-    nodes |> Enum.reverse |> Enum.uniq_by(fn {_, s} -> s[:lines] end) |> Enum.reverse
+    nodes = nodes |> Enum.filter(fn x -> deep?(x, min_depth) end) 
+    nodes = nodes |> Enum.filter(fn x -> long?(x, min_length) end)
+    nodes = nodes |> Enum.reverse |> Enum.uniq_by(fn {_, s} -> s[:lines] end) 
+    nodes |> Enum.reverse
   end
 
   defp deep?({_, %{lines: {_, _}, depth: depth}}, min_depth) do
@@ -99,7 +102,7 @@ defmodule Duplex do
   defp read_content(map, files) do
     if length(files) > 0 do
       file = hd(files)
-      map = map |> Map.put(file, File.read!(file) |> String.split("\n"))
+      map = map |> Map.put(file, file |> File.read! |> String.split("\n"))
       read_content(map, tl(files))
     else
       map
@@ -110,8 +113,9 @@ defmodule Duplex do
     if i, do: i, else: j
   end
 
-  defp get_configs() do
-    {d_dirs, d_min_depth, d_min_length, d_n_jobs} = {["lib", "config", "web"], 1, 4, 4}
+  defp get_configs do
+    d_dirs = ["lib", "config", "web"]
+    {d_min_depth, d_min_length, d_n_jobs} = {1, 4, 4}
     dirs = Application.get_env(:duplex, :dirs)
     min_depth = Application.get_env(:duplex, :min_depth)
     min_length = Application.get_env(:duplex, :min_length)
@@ -170,7 +174,8 @@ defmodule Duplex do
       end
     end
     first = current |> hd |> to_charlist |> Enum.reduce_while(0, f)
-    last = current |> Enum.reverse |> hd |> to_charlist |> Enum.reduce_while(0, f)
+    last = current |> Enum.reverse |> hd |> to_charlist 
+    last = last |> Enum.reduce_while(0, f)
     if first != last do
       item = content |> Enum.slice(max + 1..max + 1) |> hd
       if String.trim(item) == "end" do
