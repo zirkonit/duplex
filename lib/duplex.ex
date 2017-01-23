@@ -188,7 +188,7 @@ defmodule Duplex do
     content = read_content(Map.new(), files)
     IO.puts "Searching for duplicates..."
     # get grouped equal code blocks
-    groups = equal_code(nodes, n_jobs)
+    groups = equal_code(nodes)
     space = ["---------------------------------------------------------------"]
     # get data to show
     all_data = for group <- groups do
@@ -241,142 +241,59 @@ defmodule Duplex do
     end
   end
 
-  # Transform data from pairs to groups by equality
-  defp group_equals(equals, grouped) do
-    len = length(equals)
-    if len > 0 do
-      # fetch the first equal part from equals list
-      {{n1, n2}, {lines1, lines2}, {s1, _}} = equals |> Enum.fetch!(0)
-      # find pairs which have the same shape as the first pair
-      group = if len > 1 do
-        for i <- 1..len - 1 do
-          {{n3, n4}, {lines3, lines4}, {_, s2}} = equals |> Enum.fetch!(i)
-          if is_equal(s1, s2) do
-            [{n3, lines3}, {n4, lines4}]
-          else
-            []
-          end
-        end
-      else
-        [[]]
-      end
-      group = group |> flatten
-      group = [{n1, lines1}, {n2, lines2}] ++ group
-      group = group |> Enum.filter(fn item -> item != nil end) |> Enum.uniq
-      # add new group
-      grouped = grouped ++ [group]
-      # filter from equals list all pairs we found
-      equals = Enum.filter(equals, fn item ->
-        {{n1, n2}, {lines1, lines2}, _} = item
-        not ({n1, lines1} in group and {n2, lines2} in group)
-      end)
-      # run recursively with new {equals, grouped}
-      group_equals(equals, grouped)
-    else
-      {[], grouped}
-    end
-  end
-
-  def compare_nodes(nodes, len_nodes, from, until) do
-    # compare nodes with each other
-    equals = if len_nodes > 2 do
-      for i <- from..until do
-        for j <- (i + 1)..(len_nodes - 1) do
-          {{n1, file1}, s1} = Enum.fetch!(nodes, i)
-          {{n2, file2}, s2} = Enum.fetch!(nodes, j)
-          if is_equal(s1, s2) do
-            {{{n1, file1}, {n2, file2}}, {s1[:lines], s2[:lines]}, {s1, s2}}
-          end
-        end
-      end
-    else
-      [[]]
-    end
-    equals = equals |> flatten
-    Enum.filter(equals, fn item -> item != nil end)
-  end
-
-  defp ranges(len, size, n_jobs, n, prev_end) do
-    cond do
-      n == 1 ->
-        [{0, size}] ++ ranges(len, size, n_jobs, n + 1, size)
-      n == n_jobs ->
-        if prev_end + 1 < len - 2 do
-          [{prev_end + 1, len - 2}]
-        else
-          []
-        end
-      true ->
-        e = min(prev_end + size * n, len - 2)
-        [{prev_end + 1, e}] ++ ranges(len, size, n_jobs, n + 1, e)
-    end
-  end
-
-  def get_ranges_for_jobs(len, n_jobs) do
-    cond do
-      len < 2 ->
-        []
-      n_jobs < 1 ->
-        get_ranges_for_jobs(len, 1)
-      (len < 10) or (n_jobs == 1) ->
-        [{0, len - 2}]
-      n_jobs > len ->
-        get_ranges_for_jobs(len, div(len, n_jobs))
-      true ->
-        size = div(len, Enum.sum(1..n_jobs))
-        ranges(len, size, n_jobs, 1, -1)
-    end
-  end
-
   defp timeout do
     1_000 * 60 * 30
   end
 
-  # Find equal code parts
-  def equal_code(nodes, n_jobs) do
-    len = length(nodes)
-    tasks = for range <- get_ranges_for_jobs(len, n_jobs) do
-      {min, max} = range
-      Task.async(fn -> compare_nodes(nodes, len, min, max) end)
-    end
-    equals = for t <- tasks do
-      Task.await(t, timeout)
-    end
-    equals = equals |> flatten
-    # filter subsamples
-    equals = equals |> equal_blocks
-    equals = for {e, is_subsample} <- equals do
-      unless Enum.any?(is_subsample), do: e
-    end
-    equals = equals |> Enum.filter(fn item -> item != nil end)
-    # transform data from pairs to groups by equality
-    {_, grouped} = group_equals(equals, [])
-    # keep only filename, {min, max} line numbers of block
-    groups = for group <- grouped do
-      for item <- group do
-        {{_, file}, lines} = item
-        {file, lines}
+  def hash_map(nodes, map \\ %{}) do
+    if length(nodes) > 0 do
+      {{n, file}, s} = nodes |> hd
+      hash = hash_shape(s)
+      map = if hash in Map.keys(map) do
+        Map.put(map, hash, map[hash] ++ [{file, s[:lines]}])
+      else
+        Map.put(map, hash, [{file, s[:lines]}])
       end
+      hash_map(nodes |> tl, map)
+    else
+      map
     end
+  end
+
+  def hash_shape(shape, hash \\ "") do
+    tmp = if shape[:variable], do: "var", else: "#{shape[:name]}"
+    current = hash <> tmp <> "#{length(shape[:children])}"
+    if length(shape[:children]) > 0 do
+      ch_hashes = for ch <- shape[:children] do
+        hash_shape(ch)
+      end
+      current <> (ch_hashes |> Enum.join(""))
+    else
+      current
+    end
+  end
+
+  # Find equal code parts
+  def equal_code(nodes) do
+    groups = nodes |> hash_map
+    # keep only groups with size > 1
+    single_nodes = groups |> Map.keys |> Enum.filter(fn hash -> length(groups[hash]) == 1 end)
+    groups = Map.drop(groups, single_nodes)
+    # filter subsamples
+    keys = Map.keys(groups)
+    not_subsamples = Enum.filter(keys, fn hash -> not subsample?(hash, keys) end)
+    groups = for hash <- not_subsamples, do: groups[hash]
     groups |> Enum.sort_by(fn gr ->
       {_, {min, max}} = gr |> hd
       - (max - min) * length(gr)
     end)
   end
 
-  defp equal_blocks(equals) do
-    for e1 <- equals do
-      arr = for e2 <- equals do
-        {{_, _}, {{min1, max1}, {min2, max2}}, {s1, _}} = e1
-        {{_, _}, {{min3, max3}, {min4, max4}}, {s3, _}} = e2
-        (s1[:depth] < s3[:depth]) and
-        (min1 >= min3) and
-        (max1 <= max3) and
-        (min2 >= min4) and
-        (max2 <= max4)
-      end
-      {e1, arr}
+  defp subsample?(hash, keys) do
+    tmp = for key <- keys do
+      String.length(hash) < String.length(key) and String.contains?(key, hash)
     end
+    Enum.any?(tmp)
   end
 
   # Get children of the node
@@ -385,40 +302,14 @@ defmodule Duplex do
       {_, _, nodes} ->
         nodes
       _ ->
-        try do
-          # works when node like [do: data1, else: data2]
-          # returns [data1, data2]
-          tnode = Enum.into(tnode, %{})
-          Map.values(tnode)
-        rescue
-          _ ->
-            if is_list(tnode) do
-              tnode
-            else
-              nil
-            end
+        cond do
+          Keyword.keyword?(tnode) ->
+            tnode |> Enum.into(%{}) |> Map.values
+          is_list(tnode) ->
+            tnode
+          true ->
+            nil
         end
-    end
-  end
-
-  # Comparison of 2 nodes by their shapes
-  def is_equal(s1, s2) do
-    # assume different variable names as equal
-    current_eq = (s1[:variable] and s2[:variable]) or (s1[:name] == s2[:name])
-    # assume different variable names as different
-    # current_eq = s1[:name] == s2[:name]
-    eq = if current_eq do
-      if s1[:depth] == s2[:depth] and length(s1[:children]) == length(s2[:children]) do
-        ch_eq = for {c1, c2} <- Enum.zip(s1[:children], s2[:children]) do
-          is_equal(c1, c2)
-        end
-        Enum.all?(ch_eq)
-      end
-    end
-    if eq == nil do
-      false
-    else
-      eq
     end
   end
 
