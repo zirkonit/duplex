@@ -64,13 +64,12 @@ defmodule Duplex do
           !(Keyword.keyword?(item)) and is_tuple(item)
       end
     end)
-    nodes = nodes |> blockulate |> flatten
     # calculate shapes only once
     nodes = for n <- nodes, do: {{n, file}, get_shape(n)}
     # filter short blocks, non deep blocks
-    nodes = nodes |> Enum.filter(fn x -> deep?(x, min_depth) end) 
+    nodes = nodes |> Enum.filter(fn x -> deep?(x, min_depth) end)
     nodes = nodes |> Enum.filter(fn x -> long?(x, min_length) end)
-    nodes = nodes |> Enum.reverse |> Enum.uniq_by(fn {_, s} -> s[:lines] end) 
+    nodes = nodes |> Enum.reverse |> Enum.uniq_by(fn {_, s} -> s[:lines] end)
     nodes |> Enum.reverse
   end
 
@@ -80,23 +79,6 @@ defmodule Duplex do
 
   defp long?({_, %{lines: {min, max}, depth: _}}, min_length) do
     (max != nil) and (min != nil) and (max - min + 1 >= min_length)
-  end
-
-  defp blockulate(nodes) do
-    for n <- nodes do
-      if is_list(n) and length(n) > 1 do
-        len = length(n)
-        {_, tmp} = for i <- 0..len - 2 do
-          for j <- i+1..len - 1 do
-            Enum.slice(n, i..j)
-          end
-        end
-        tmp = tmp |> flatten
-        tmp
-      else
-        [n]
-      end
-    end
   end
 
   defp read_content(map, files) do
@@ -174,7 +156,7 @@ defmodule Duplex do
       end
     end
     first = current |> hd |> to_charlist |> Enum.reduce_while(0, f)
-    last = current |> Enum.reverse |> hd |> to_charlist 
+    last = current |> Enum.reverse |> hd |> to_charlist
     last = last |> Enum.reduce_while(0, f)
     if first != last do
       item = content |> Enum.slice(max + 1..max + 1) |> hd
@@ -200,12 +182,10 @@ defmodule Duplex do
       get_files(d)
     end
     files = files |> flatten
-    IO.puts ""
     IO.puts "Reading files..."
     nodes = read_files(files, n_jobs, min_depth, min_length)
     # get map of file contents (key, balue = filename, content)
     content = read_content(Map.new(), files)
-    IO.puts ""
     IO.puts "Searching for duplicates..."
     # get grouped equal code blocks
     groups = equal_code(nodes, n_jobs)
