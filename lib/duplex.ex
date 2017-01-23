@@ -67,18 +67,19 @@ defmodule Duplex do
     # calculate shapes only once
     nodes = for n <- nodes, do: {{n, file}, get_shape(n)}
     # filter short blocks, non deep blocks
-    nodes = nodes |> Enum.filter(fn x -> deep?(x, min_depth) end)
-    nodes = nodes |> Enum.filter(fn x -> long?(x, min_length) end)
+    nodes = nodes |> Enum.filter(fn x -> valid_line_numbers?(x) end)
+    nodes = nodes |> Enum.filter(fn x -> deep_long?(x, min_depth + min_length) end)
     nodes = nodes |> Enum.reverse |> Enum.uniq_by(fn {_, s} -> s[:lines] end)
     nodes |> Enum.reverse
   end
 
-  defp deep?({_, %{lines: {_, _}, depth: depth}}, min_depth) do
-    depth >= min_depth
+  defp valid_line_numbers?({_, %{lines: {min, max}, depth: _}}) do
+    (max != nil) and (min != nil)
   end
 
-  defp long?({_, %{lines: {min, max}, depth: _}}, min_length) do
-    (max != nil) and (min != nil) and (max - min + 1 >= min_length)
+  defp deep_long?({_, %{lines: {min, max}, depth: depth}}, threshold) do
+    len = max - min + 1
+    len + depth >= threshold
   end
 
   defp read_content(map, files) do
@@ -97,7 +98,7 @@ defmodule Duplex do
 
   defp get_configs do
     d_dirs = ["lib", "config", "web"]
-    {d_min_depth, d_min_length, d_n_jobs} = {1, 4, 4}
+    {d_min_depth, d_min_length, d_n_jobs} = {3, 4, 4}
     dirs = Application.get_env(:duplex, :dirs)
     min_depth = Application.get_env(:duplex, :min_depth)
     min_length = Application.get_env(:duplex, :min_length)
@@ -193,7 +194,7 @@ defmodule Duplex do
     # get data to show
     all_data = for group <- groups do
       gr = for item <- group |> Enum.reverse do
-        {file, {min, max}} = item
+        {file, {min, max}, _} = item
         min = min - 1
         max = max - 1
         c = Enum.slice(content[file], min..max)
@@ -250,9 +251,9 @@ defmodule Duplex do
       {{n, file}, s} = nodes |> hd
       hash = hash_shape(s)
       map = if hash in Map.keys(map) do
-        Map.put(map, hash, map[hash] ++ [{file, s[:lines]}])
+        Map.put(map, hash, map[hash] ++ [{file, s[:lines], s[:depth]}])
       else
-        Map.put(map, hash, [{file, s[:lines]}])
+        Map.put(map, hash, [{file, s[:lines], s[:depth]}])
       end
       hash_map(nodes |> tl, map)
     else
@@ -283,9 +284,14 @@ defmodule Duplex do
     keys = Map.keys(groups)
     not_subsamples = Enum.filter(keys, fn hash -> not subsample?(hash, keys) end)
     groups = for hash <- not_subsamples, do: groups[hash]
+    groups = for gr <- groups do
+      gr |> Enum.sort_by(fn {file, {min, _}, _} ->
+        {file, -min}
+      end)
+    end
     groups |> Enum.sort_by(fn gr ->
-      {_, {min, max}} = gr |> hd
-      - (max - min) * length(gr)
+      {_, {min, max}, depth} = gr |> hd
+      - (max - min + depth) * length(gr)
     end)
   end
 

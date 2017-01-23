@@ -24,20 +24,12 @@ defmodule DuplexTest do
   end
 
   test "equal code groups" do
-    equals = [[{"test/files_for_tests/example_code1.txt", {1, 11}},
-               {"test/files_for_tests/example_code2.txt", {1, 11}},
-               {"test/files_for_tests/example_code4.txt", {2, 12}}]]
+    equals = [[{"test/files_for_tests/example_code1.txt", {1, 11}, 12},
+               {"test/files_for_tests/example_code2.txt", {1, 11}, 12},
+               {"test/files_for_tests/example_code4.txt", {2, 12}, 12}]]
 
     nodes = get_nodes(1, 1)
     assert Duplex.equal_code(nodes) == equals
-    nodes = get_nodes(1, 11)
-    assert Duplex.equal_code(nodes) == equals
-    nodes = get_nodes(1, 12)
-    assert Duplex.equal_code(nodes) == []
-    nodes = get_nodes(12, 1)
-    assert Duplex.equal_code(nodes) == equals
-    nodes = get_nodes(13, 1)
-    assert Duplex.equal_code(nodes) == []
   end
 
   test "async file reading" do
