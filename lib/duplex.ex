@@ -190,7 +190,12 @@ defmodule Duplex do
     if first != last do
       item = content |> Enum.slice(max + 1..max + 1) |> hd
       if String.trim(item) == "end" do
-        get_additional_lines(current ++ [item], min, max + 1, content)
+        spaces = item |> to_charlist |> Enum.reduce_while(0, f)
+        if spaces >= first do
+          get_additional_lines(current ++ [item], min, max + 1, content)
+        else
+          {current, min, max}
+        end
       else
         {current, min, max}
       end
