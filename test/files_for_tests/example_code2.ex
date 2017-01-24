@@ -1,4 +1,7 @@
-defmodule M2 do
+ defmodule M2 do
+  @moduledoc """
+    M2
+  """
   def f(n, m) do
     if m != 0 do
        if n > m do
