@@ -4,7 +4,19 @@
 
 Duplex allows you to search for similar code blocks inside your Elixir project.
 
-## Installation
+## Installation as escript
+
+```
+mix escript.install https://github.com/zirkonit/duplex/duplex
+```
+
+## Usage as escript
+```
+cd /path/to/project
+~/.mix/escripts/duplex
+```
+
+## Installation as dependency
 
 1. Add `:duplex` to deps in `mix.exs`
 
@@ -19,20 +31,19 @@ end
 mix deps.get
 ```
 
+## Usage as dependency
+
+```elixir
+iex -S mix
+Duplex.show_similar
+```
+
 ## Config
 
 You can change default values on `config.exs` by adding next lines with your own values
 
 ```elixir
-config :duplex, min_depth: 1 # filter AST nodes with depth more that min_depth
-config :duplex, min_length: 3 # filter AST nodes with code-block length more than min_length
+config :duplex, threshold: 7 # filter AST nodes with `node.length + node.depth >= threshold`
 config :duplex, dirs: ["lib", "config", "web"] # directories to search for Elixir source files
 config :duplex, n_jobs: 4 # number of threads
-```
-
-## Usage
-
-```elixir
-iex -S mix
-Duplex.show_similar
 ```

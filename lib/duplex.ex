@@ -5,6 +5,19 @@ defmodule Duplex do
     project.
   """
 
+  defp help_text do
+    """
+    Duplex escript usage:
+
+    --help - show this message
+    --threshold - filter AST nodes by `node.length + node.depth >= threshold`.
+                  Than lower threshold, than simpler nodes will be included.
+                  Optimal value is around 7-10. Default is 7.
+    --njobs - number of threads will be used for AST parsing
+    --file - file to export output
+    """
+  end
+
   defp parse_args(args) do
     {args, _, _} = OptionParser.parse(args)
     args = args |> Enum.into(%{})
@@ -20,16 +33,20 @@ defmodule Duplex do
         nil
       end
     end
-    min_depth = extract.(args, :mindepth, true)
-    min_length = extract.(args, :minlength, true)
+    help = extract.(args, :help, false)
+    threshold = extract.(args, :threshold, true)
     n_jobs = extract.(args, :njobs, true)
-    export_file = extract.(args, :export, false)
-    {min_depth, min_length, n_jobs, export_file}
+    export_file = extract.(args, :file, false)
+    {help, threshold, n_jobs, export_file}
   end
 
   def main(args \\ []) do
-    {min_depth, min_length, n_jobs, export_file} = parse_args(args)
-    Duplex.show_similar(nil, min_depth, min_length, n_jobs, export_file)
+    {help, threshold, n_jobs, export_file} = parse_args(args)
+    if help do
+      IO.puts help_text
+    else
+      Duplex.show_similar(nil, threshold, n_jobs, export_file)
+    end
   end
 
   defp flatten(e) do
@@ -75,7 +92,7 @@ defmodule Duplex do
   end
 
   # Get all informative nodes from AST tree
-  def code_blocks(file, min_depth, min_length) do
+  def code_blocks(file, threshold) do
     {_, nodes} = visit(get_ast(file), [])
     nodes = nodes |> Enum.uniq |> Enum.filter(fn item ->
       case item do
@@ -95,7 +112,7 @@ defmodule Duplex do
     nodes = for n <- nodes, do: {{n, file}, get_shape(n)}
     # filter short blocks, non deep blocks
     nodes = nodes |> Enum.filter(fn x -> valid_line_numbers?(x) end)
-    nodes = nodes |> Enum.filter(fn x -> deep_long?(x, min_depth + min_length) end)
+    nodes = nodes |> Enum.filter(fn x -> deep_long?(x, threshold) end)
     nodes = nodes |> Enum.reverse |> Enum.uniq_by(fn {_, s} -> s[:lines] end)
     nodes |> Enum.reverse
   end
@@ -119,26 +136,24 @@ defmodule Duplex do
     end
   end
 
-  defp get_configs(dirs, min_depth, min_length, n_jobs) do
+  defp get_configs(dirs, threshold, n_jobs) do
     d_dirs = ["lib", "config", "web"]
-    {d_min_depth, d_min_length, d_n_jobs} = {3, 4, 4}
+    {d_threshold, d_n_jobs} = {7, 4}
 
     c_dirs = Application.get_env(:duplex, :dirs)
-    c_min_depth = Application.get_env(:duplex, :min_depth)
-    c_min_length = Application.get_env(:duplex, :min_length)
+    c_threshold = Application.get_env(:duplex, :threshold)
     c_n_jobs = Application.get_env(:duplex, :n_jobs)
     choose_one = fn i, j, k ->
       if i, do: i, else: if j, do: j, else: k
     end
     dirs = choose_one.(dirs, c_dirs, d_dirs)
-    min_depth = choose_one.(min_depth, c_min_depth, d_min_depth)
-    min_length = choose_one.(min_length, c_min_length, d_min_length)
+    threshold = choose_one.(threshold, c_threshold, d_threshold)
     n_jobs = choose_one.(n_jobs, c_n_jobs, d_n_jobs)
 
-    {dirs, min_depth, min_length, n_jobs}
+    {dirs, threshold, n_jobs}
   end
 
-  def read_files(files, n_jobs, min_depth, min_length) do
+  def read_files(files, n_jobs, threshold) do
     n_jobs = if n_jobs <= 0 do
       1
     else
@@ -163,7 +178,7 @@ defmodule Duplex do
     tasks = for files <- chunks do
       Task.async(fn ->
         nodes = for file <- files do
-          code_blocks(file, min_depth, min_length)
+          code_blocks(file, threshold)
         end
         nodes = nodes |> flatten
         nodes
@@ -207,16 +222,16 @@ defmodule Duplex do
   # Main function to find equal code parts.
   # dirs - directories to scan for elixir source files
   # export_file - if not nil, write results to the file by this path
-  def show_similar(dirs \\ nil, min_depth \\ nil, min_length \\ nil, n_jobs \\ nil, export_file \\ nil) do
-     configs = get_configs(dirs, min_depth, min_length, n_jobs)
-     {dirs, min_depth, min_length, n_jobs} = configs
+  def show_similar(dirs \\ nil, threshold \\ nil, n_jobs \\ nil, export_file \\ nil) do
+     configs = get_configs(dirs, threshold, n_jobs)
+     {dirs, threshold, n_jobs} = configs
     # scan dirs
     files = for d <- dirs do
       get_files(d)
     end
     files = files |> flatten
     IO.puts "Reading files..."
-    nodes = read_files(files, n_jobs, min_depth, min_length)
+    nodes = read_files(files, n_jobs, threshold)
     # get map of file contents (key, balue = filename, content)
     content = read_content(Map.new(), files)
     IO.puts "Searching for duplicates..."

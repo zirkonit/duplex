@@ -38,9 +38,15 @@ defmodule Duplex.Mixfile do
     Duplex allows you to search for similar code blocks inside your project.
 
     ## Usage
+    ```
+    mix escript.install https://github.com/zirkonit/duplex/duplex
+    cd /path/to/project
+    ~/.mix/escripts/duplex
+    ```
+    or
     ```elixir
     iex -S mix
-    Duplex.show_similar(["lib", "config", "web"])
+    Duplex.show_similar
     ```
     """
   end
