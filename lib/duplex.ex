@@ -5,7 +5,7 @@ defmodule Duplex do
     project.
   """
 
-  defp help_text do
+  def help_text do
     """
     Duplex escript usage:
 
@@ -18,7 +18,7 @@ defmodule Duplex do
     """
   end
 
-  defp parse_args(args) do
+  def parse_args(args) do
     {args, _, _} = OptionParser.parse(args)
     args = args |> Enum.into(%{})
     extract = fn args, key, to_int ->
@@ -44,6 +44,7 @@ defmodule Duplex do
     {help, threshold, n_jobs, export_file} = parse_args(args)
     if help do
       IO.puts help_text
+      help_text
     else
       Duplex.show_similar(nil, threshold, n_jobs, export_file)
     end
@@ -91,10 +92,8 @@ defmodule Duplex do
     end
   end
 
-  # Get all informative nodes from AST tree
-  def code_blocks(file, threshold) do
-    {_, nodes} = visit(get_ast(file), [])
-    nodes = nodes |> Enum.uniq |> Enum.filter(fn item ->
+  defp filter_nodes(nodes) do
+    nodes |> Enum.uniq |> Enum.filter(fn item ->
       case item do
         {_, _, nil} ->
           false
@@ -108,6 +107,12 @@ defmodule Duplex do
           !(Keyword.keyword?(item)) and is_tuple(item)
       end
     end)
+  end
+
+  # Get all informative nodes from AST tree
+  def code_blocks(file, threshold) do
+    {_, nodes} = visit(get_ast(file), [])
+    nodes = filter_nodes(nodes)
     # calculate shapes only once
     nodes = for n <- nodes, do: {{n, file}, get_shape(n)}
     # filter short blocks, non deep blocks
@@ -153,28 +158,7 @@ defmodule Duplex do
     {dirs, threshold, n_jobs}
   end
 
-  def read_files(files, n_jobs, threshold) do
-    n_jobs = if n_jobs <= 0 do
-      1
-    else
-      n_jobs
-    end
-    n_jobs = if length(files) < n_jobs do
-      length(files)
-    else
-      n_jobs
-    end
-    size = div(length(files), n_jobs)
-    chunks = for n <- 0..(n_jobs - 1) do
-      cond do
-        n == 0 ->
-          Enum.slice(files, 0, size)
-        n == n_jobs - 1 ->
-          Enum.slice(files, n * size, 2 * size)
-        true ->
-          Enum.slice(files, n * size, size)
-        end
-    end
+  defp read_by_chunk(chunks, threshold) do
     tasks = for files <- chunks do
       Task.async(fn ->
         nodes = for file <- files do
@@ -189,6 +173,23 @@ defmodule Duplex do
     end
     nodes = nodes |> flatten
     nodes
+  end
+
+  def read_files(files, n_jobs, threshold) do
+    n_jobs = if n_jobs <= 0, do: 1, else: n_jobs
+    n_jobs = if length(files) < n_jobs, do: length(files), else: n_jobs
+    size = div(length(files), n_jobs)
+    chunks = for n <- 0..(n_jobs - 1) do
+      cond do
+        n == 0 ->
+          Enum.slice(files, 0, size)
+        n == n_jobs - 1 ->
+          Enum.slice(files, n * size, 2 * size)
+        true ->
+          Enum.slice(files, n * size, size)
+        end
+    end
+    read_by_chunk(chunks, threshold)
   end
 
   defp get_additional_lines(current, min, max, content) do
@@ -219,24 +220,7 @@ defmodule Duplex do
     end
   end
 
-  # Main function to find equal code parts.
-  # dirs - directories to scan for elixir source files
-  # export_file - if not nil, write results to the file by this path
-  def show_similar(dirs \\ nil, threshold \\ nil, n_jobs \\ nil, export_file \\ nil) do
-     configs = get_configs(dirs, threshold, n_jobs)
-     {dirs, threshold, n_jobs} = configs
-    # scan dirs
-    files = for d <- dirs do
-      get_files(d)
-    end
-    files = files |> flatten
-    IO.puts "Reading files..."
-    nodes = read_files(files, n_jobs, threshold)
-    # get map of file contents (key, balue = filename, content)
-    content = read_content(Map.new(), files)
-    IO.puts "Searching for duplicates..."
-    # get grouped equal code blocks
-    groups = equal_code(nodes)
+  defp get_output_data(groups, content) do
     space = ["---------------------------------------------------------------"]
     # get data to show
     all_data = for group <- groups do
@@ -256,9 +240,30 @@ defmodule Duplex do
       gr = gr |> flatten
       gr ++ space
     end
-    all_data = all_data |> flatten
+    all_data |> flatten
+  end
+
+  # Main function to find equal code parts.
+  # dirs - directories to scan for elixir source files
+  # export_file - if not nil, write results to the file by this path
+  def show_similar(dirs \\ nil, t_hold \\ nil, n_jobs \\ nil, export \\ nil) do
+    configs = get_configs(dirs, t_hold, n_jobs)
+    {dirs, t_hold, n_jobs} = configs
+    # scan dirs
+    files = for d <- dirs do
+      get_files(d)
+    end
+    files = files |> flatten
+    IO.puts "Reading files..."
+    nodes = read_files(files, n_jobs, t_hold)
+    # get map of file contents (key, balue = filename, content)
+    content = read_content(Map.new(), files)
+    IO.puts "Searching for duplicates..."
+    # get grouped equal code blocks
+    groups = nodes |> equal_code
+    all_data = groups |> get_output_data(content)
     nothing_found = "There are no duplicates"
-    if export_file == nil do
+    if export == nil do
       for item <- all_data do
         IO.puts item
       end
@@ -271,12 +276,12 @@ defmodule Duplex do
       else
         all_data
       end
-      write_file(export_file, all_data)
+      write_file(export, all_data)
     end
     groups
   end
 
-  defp write_file(filename, data) do
+  def write_file(filename, data) do
     try do
       {:ok, file} = File.open(filename, [:write])
       for d <- data do
@@ -309,8 +314,8 @@ defmodule Duplex do
   end
 
   def hash_shape(shape, hash \\ "") do
-    tmp = if shape[:variable], do: "var", else: "#{shape[:name]}"
-    current = hash <> tmp <> "#{length(shape[:children])}"
+    tmp = if shape[:variable], do: "var", else: inspect(shape[:name])
+    current = "#{hash}#{tmp}#{length(shape[:children])}"
     if length(shape[:children]) > 0 do
       ch_hashes = for ch <- shape[:children] do
         hash_shape(ch)
@@ -325,11 +330,16 @@ defmodule Duplex do
   def equal_code(nodes) do
     groups = nodes |> hash_map
     # keep only groups with size > 1
-    single_nodes = groups |> Map.keys |> Enum.filter(fn hash -> length(groups[hash]) == 1 end)
+    hashes = groups |> Map.keys
+    single_nodes = hashes |> Enum.filter(fn hash ->
+      length(groups[hash]) == 1
+    end)
     groups = Map.drop(groups, single_nodes)
     # filter subsamples
     keys = Map.keys(groups)
-    not_subsamples = Enum.filter(keys, fn hash -> not subsample?(hash, keys) end)
+    not_subsamples = Enum.filter(keys, fn hash ->
+      not subsample?(hash, keys)
+    end)
     groups = for hash <- not_subsamples, do: groups[hash]
     groups = for gr <- groups do
       gr |> Enum.sort_by(fn {file, {min, _}, _} ->

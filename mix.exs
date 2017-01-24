@@ -54,7 +54,6 @@ defmodule Duplex.Mixfile do
   defp package do
     [
      name: :duplex,
-     # files: ["lib", "priv", "mix.exs", "README*", "readme*", "LICENSE*", "license*"],
      maintainers: ["Ivan Cherevko", "Andrew Koryagin"],
      licenses: ["Apache 2.0"],
      links: %{},
