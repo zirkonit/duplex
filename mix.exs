@@ -39,7 +39,7 @@ defmodule Duplex.Mixfile do
 
     ## Usage
     ```
-    mix escript.install https://github.com/zirkonit/duplex/duplex
+    mix do escript.build, escript.install
     cd /path/to/project
     ~/.mix/escripts/duplex
     ```

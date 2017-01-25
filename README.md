@@ -7,7 +7,7 @@ Duplex allows you to search for similar code blocks inside your Elixir project.
 ## Installation as escript
 
 ```
-mix escript.install https://github.com/zirkonit/duplex/duplex
+mix do escript.build, escript.install
 ```
 
 ## Usage as escript
