@@ -5,7 +5,12 @@
 Duplex allows you to search for similar code blocks inside your Elixir project.
 
 ## Installation as escript
+Remotely (without repository cloning)
+```
+mix escript.install https://raw.githubusercontent.com/zirkonit/duplex/master/duplex
+```
 
+Locally
 ```
 mix do escript.build, escript.install
 ```
@@ -44,6 +49,8 @@ You can change default values on `config.exs` by adding next lines with your own
 
 ```elixir
 config :duplex, threshold: 7 # filter AST nodes with `node.length + node.depth >= threshold`
+# Than lower threshold, than simpler nodes will be included.
+# Optimal value is around 7-10. Default is 7.
 config :duplex, dirs: ["lib", "config", "web"] # directories to search for Elixir source files
 config :duplex, n_jobs: 4 # number of threads
 ```

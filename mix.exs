@@ -38,12 +38,12 @@ defmodule Duplex.Mixfile do
     Duplex allows you to search for similar code blocks inside your project.
 
     ## Usage
+    As escript
     ```
-    mix do escript.build, escript.install
     cd /path/to/project
     ~/.mix/escripts/duplex
     ```
-    or
+    or as dependency
     ```elixir
     iex -S mix
     Duplex.show_similar
