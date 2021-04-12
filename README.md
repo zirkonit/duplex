@@ -38,9 +38,14 @@ mix deps.get
 
 ## Usage as dependency
 
-```elixir
-iex -S mix
-Duplex.show_similar
+```
+mix duplex
+```
+
+or with arguments
+
+```
+mix duplex --threshold 7
 ```
 
 ## Config

@@ -2,20 +2,22 @@ defmodule Duplex.Mixfile do
   use Mix.Project
 
   def project do
-    [app: :duplex,
-     version: "0.1.1",
-     elixir: "~> 1.3",
-     build_embedded: Mix.env == :prod,
-     start_permanent: Mix.env == :prod,
-     description: description(),
-     package: package(),
-     test_coverage: [tool: Coverex.Task],
-     deps: deps(),
-     escript: escript()]
+    [
+      app: :duplex,
+      version: "0.1.1",
+      elixir: "~> 1.3",
+      build_embedded: Mix.env() == :prod,
+      start_permanent: Mix.env() == :prod,
+      description: description(),
+      package: package(),
+      test_coverage: [tool: Coverex.Task],
+      deps: deps(),
+      escript: escript()
+    ]
   end
 
   def application do
-    [applications: [:logger]]
+    [applications: [:logger], extra_applications: [:dir_walker]]
   end
 
   def escript do
@@ -53,11 +55,10 @@ defmodule Duplex.Mixfile do
 
   defp package do
     [
-     name: :duplex,
-     maintainers: ["Ivan Cherevko", "Andrew Koryagin"],
-     licenses: ["Apache 2.0"],
-     links: %{},
+      name: :duplex,
+      maintainers: ["Ivan Cherevko", "Andrew Koryagin"],
+      licenses: ["Apache 2.0"],
+      links: %{}
     ]
   end
-
 end

@@ -4,12 +4,15 @@ defmodule DuplexTest do
   import Duplex
 
   test "getting all .ex, .exs files" do
-    assert Duplex.get_files("test") == ["test/test_helper.exs",
-                                        "test/files_for_tests/example_code4.ex",
-                                        "test/files_for_tests/example_code3.ex",
-                                        "test/files_for_tests/example_code2.ex",
-                                        "test/files_for_tests/example_code1.ex",
-                                        "test/duplex_test.exs"]
+    assert Duplex.get_files("test") == [
+             "test/test_helper.exs",
+             "test/files_for_tests/example_code4.ex",
+             "test/files_for_tests/example_code3.ex",
+             "test/files_for_tests/example_code2.ex",
+             "test/files_for_tests/example_code1.ex",
+             "test/duplex_test.exs"
+           ]
+
     assert Duplex.get_files("path_does_not_exist") == []
   end
 
@@ -17,25 +20,38 @@ defmodule DuplexTest do
     dir = "test/files_for_tests/"
     name = "example_code"
     ext = ".ex"
-    f_names = ["#{dir}#{name}1#{ext}",
-               "#{dir}#{name}2#{ext}",
-               "#{dir}#{name}3#{ext}",
-               "#{dir}#{name}4#{ext}"]
-    files = if f_index do
-      Enum.slice(f_names, f_index..f_index)
-    else
-      f_names
-    end
-    nodes = for file <- files do
-      code_blocks(file, threshold)
-    end
-    nodes |> Enum.flat_map(&(&1))
+
+    f_names = [
+      "#{dir}#{name}1#{ext}",
+      "#{dir}#{name}2#{ext}",
+      "#{dir}#{name}3#{ext}",
+      "#{dir}#{name}4#{ext}"
+    ]
+
+    files =
+      if f_index do
+        Enum.slice(f_names, f_index..f_index)
+      else
+        f_names
+      end
+
+    nodes =
+      for file <- files do
+        code_blocks(file, threshold)
+      end
+
+    nodes |> Enum.flat_map(& &1)
   end
 
   test "example_code duplicates" do
-    results = [[{"test/files_for_tests/example_code1.ex", {1, 14}, 13},
-                {"test/files_for_tests/example_code2.ex", {1, 14}, 13},
-                {"test/files_for_tests/example_code4.ex", {2, 16}, 13}]]
+    results = [
+      [
+        {"test/files_for_tests/example_code1.ex", {1, 14}, 13},
+        {"test/files_for_tests/example_code2.ex", {1, 14}, 13},
+        {"test/files_for_tests/example_code4.ex", {2, 16}, 13}
+      ]
+    ]
+
     f_name = "test_res.txt"
     dir = ["test/files_for_tests"]
     assert Duplex.show_similar(dir, nil, nil, f_name) == results
@@ -56,14 +72,20 @@ defmodule DuplexTest do
     dir = "test/files_for_tests/"
     name = "example_code"
     ext = ".ex"
-    files = ["#{dir}#{name}1#{ext}",
-             "#{dir}#{name}2#{ext}",
-             "#{dir}#{name}3#{ext}",
-             "#{dir}#{name}4#{ext}"]
-    chunks = for i <- 1..8 do
-      Duplex.read_files(files, i, 7)
-    end
-    assert chunks |> Enum.uniq |> length == 1
+
+    files = [
+      "#{dir}#{name}1#{ext}",
+      "#{dir}#{name}2#{ext}",
+      "#{dir}#{name}3#{ext}",
+      "#{dir}#{name}4#{ext}"
+    ]
+
+    chunks =
+      for i <- 1..8 do
+        Duplex.read_files(files, i, 7)
+      end
+
+    assert chunks |> Enum.uniq() |> length == 1
   end
 
   test "shape hashes" do
@@ -73,17 +95,15 @@ defmodule DuplexTest do
     {_, shape1} = nodes1 |> Enum.max_by(fn {_, shape} -> shape[:depth] end)
     {_, shape2} = nodes2 |> Enum.max_by(fn {_, shape} -> shape[:depth] end)
     {_, shape3} = nodes3 |> Enum.max_by(fn {_, shape} -> shape[:depth] end)
-    h1 = shape1 |> Duplex.hash_shape
-    h2 = shape2 |> Duplex.hash_shape
-    h3 = shape3 |> Duplex.hash_shape
+    h1 = shape1 |> Duplex.hash_shape()
+    h2 = shape2 |> Duplex.hash_shape()
+    h3 = shape3 |> Duplex.hash_shape()
     assert h1 == h2
     assert h1 != h3
   end
 
   test "argparse" do
-    args = ["--help", "--njobs", "10",
-            "--threshold", "2", "--file",
-            "/path/to/file.ex"]
+    args = ["--help", "--njobs", "10", "--threshold", "2", "--file", "/path/to/file.ex"]
     assert Duplex.parse_args(args) == {true, 2, 10, "/path/to/file.ex"}
   end
 
@@ -92,8 +112,8 @@ defmodule DuplexTest do
   end
 
   test "escript" do
-    assert Duplex.main(["--help"]) == Duplex.help_text
-    assert Duplex.main == Duplex.show_similar
+    assert Duplex.main(["--help"]) == Duplex.help_text()
+    assert Duplex.main() == Duplex.show_similar()
   end
 
   test "writting file" do
@@ -102,5 +122,4 @@ defmodule DuplexTest do
     assert File.read!(f_name) == "data1\ndata2\n"
     assert File.rm(f_name) == :ok
   end
-
 end

@@ -4,14 +4,15 @@ defmodule M1 do
   """
   def f(a, b) do
     if b != 0 do
-       if a > b do
-           a = a - b
-       else
-           b = b - a
-       end
-       f(a, b)
+      if a > b do
+        a = a - b
+      else
+        b = b - a
+      end
+
+      f(a, b)
     else
-       a
+      a
     end
   end
 end
