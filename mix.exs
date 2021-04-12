@@ -15,7 +15,7 @@ defmodule Duplex.Mixfile do
   end
 
   def application do
-    [applications: [:logger]]
+    [applications: [:logger], extra_applications: [:dir_walker]]
   end
 
   def escript do

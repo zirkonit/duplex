@@ -19,32 +19,23 @@ defmodule Duplex do
   end
 
   def parse_args(args) do
-    {args, _, _} = OptionParser.parse(args)
-    args = args |> Enum.into(%{})
-    extract = fn args, key, to_int ->
-      if key in Map.keys(args) do
-        if to_int do
-          {parsed, _} = Integer.parse(args[key])
-          parsed
-        else
-          args[key]
-        end
-      else
-        nil
-      end
-    end
-    help = extract.(args, :help, false)
-    threshold = extract.(args, :threshold, true)
-    n_jobs = extract.(args, :njobs, true)
-    export_file = extract.(args, :file, false)
+    {args, _, _} =
+      OptionParser.parse(args,
+        strict: [help: :boolean, threshold: :integer, njobs: :integer, file: :string]
+      )
+
+    help = args[:help]
+    threshold = args[:threshold]
+    n_jobs = args[:njobs]
+    export_file = args[:file]
     {help, threshold, n_jobs, export_file}
   end
 
   def main(args \\ []) do
     {help, threshold, n_jobs, export_file} = parse_args(args)
     if help do
-      IO.puts help_text
-      help_text
+      IO.puts(help_text())
+      help_text()
     else
       Duplex.show_similar(nil, threshold, n_jobs, export_file)
     end
@@ -169,7 +160,7 @@ defmodule Duplex do
       end)
     end
     nodes = for task <- tasks do
-      Task.await(task, timeout)
+      Task.await(task, timeout())
     end
     nodes = nodes |> flatten
     nodes
@@ -300,7 +291,7 @@ defmodule Duplex do
 
   def hash_map(nodes, map \\ %{}) do
     if length(nodes) > 0 do
-      {{n, file}, s} = nodes |> hd
+      {{_n, file}, s} = nodes |> hd
       hash = hash_shape(s)
       map = if hash in Map.keys(map) do
         Map.put(map, hash, map[hash] ++ [{file, s[:lines], s[:depth]}])
